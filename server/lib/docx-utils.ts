@@ -1,5 +1,6 @@
 import PizZip from "pizzip";
 import { createHash } from "crypto";
+import Docxtemplater from "docxtemplater";
 
 export interface PlaceholderExtractionResult {
   placeholders: string[];
@@ -122,60 +123,19 @@ export function fillDocxTemplate(
 ): Buffer {
   const zip = new PizZip(templateBuffer);
   
-  const partsToProcess: string[] = [];
-  
-  for (const filename in zip.files) {
-    if (
-      filename.startsWith("word/") &&
-      (filename.includes("document") ||
-        filename.includes("header") ||
-        filename.includes("footer") ||
-        filename.includes("footnote") ||
-        filename.includes("endnote"))
-    ) {
-      partsToProcess.push(filename);
-    }
-  }
-
-  for (const part of partsToProcess) {
-    try {
-      const file = zip.file(part);
-      if (!file) continue;
-
-      let content = file.asText();
-
-      const textNodes = extractTextFromXml(content);
-      const concatenatedText = textNodes.join("");
-      
-      let modifiedText = concatenatedText;
-      for (const [key, value] of Object.entries(placeholderValues)) {
-        const placeholder = `{{${key}}}`;
-        const escapedValue = escapeXml(String(value));
-        modifiedText = modifiedText.split(placeholder).join(escapedValue);
-      }
-
-      if (modifiedText !== concatenatedText) {
-        content = reconstructXmlWithText(content, modifiedText);
-        zip.file(part, content);
-      }
-    } catch (error) {
-      continue;
-    }
-  }
-
-  return Buffer.from(zip.generate({ type: "nodebuffer" }));
-}
-
-function reconstructXmlWithText(originalXml: string, newText: string): string {
-  const textNodeRegex = /(<w:t[^>]*>)([^<]*)(<\/w:t>)/g;
-  let charIndex = 0;
-  
-  return originalXml.replace(textNodeRegex, (match, opening, oldText, closing) => {
-    const length = oldText.length;
-    const replacement = newText.substring(charIndex, charIndex + length);
-    charIndex += length;
-    return opening + replacement + closing;
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
   });
+
+  doc.render(placeholderValues);
+
+  const buf = doc.getZip().generate({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+  });
+
+  return buf;
 }
 
 function escapeXml(unsafe: string): string {
