@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatKwh, formatCO2, formatCII, formatDelta } from "@/lib/formatters";
 import { DollarSign, Zap, Leaf, Heart, Map, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import type { MetricsData } from "@shared/schema";
+import { EnergyZoneMap } from "@/components/EnergyZoneMap";
+import { DEFAULT_ATLANTA_ZIP } from "@/lib/constants";
+import type { MetricsData, ZoneData } from "@shared/schema";
 
 export default function Dashboard() {
   const { session } = useAuth();
@@ -160,13 +162,46 @@ export default function Dashboard() {
             </Button>
           </Link>
         </div>
-        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <Map className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Interactive map showing ZIP-level energy metrics
-            </p>
-          </div>
+        <div className="rounded-lg overflow-hidden" style={{ height: "400px" }}>
+          {isLoading ? (
+            <div className="h-full bg-muted animate-pulse rounded" />
+          ) : metrics?.map_summary ? (
+            <EnergyZoneMap 
+              data={{
+                kpis: {
+                  zip: DEFAULT_ATLANTA_ZIP,
+                  load_kwh: 0,
+                  carbon_intensity_kg_per_kwh: 0,
+                  aqi: 0,
+                  price_cents_per_kwh: 0,
+                  energy_burden_pct: 0,
+                  svi: 0,
+                  cii: 0,
+                },
+                trends_24h: [],
+                cleaner_hours: [],
+                all_zips_metrics: Object.fromEntries(
+                  metrics.map_summary.map(zone => [zone.zip, {
+                    cii: zone.cii,
+                    load_kwh: zone.load_kwh,
+                    carbon_intensity_kg_per_kwh: zone.carbon_intensity_kg_per_kwh,
+                    aqi: zone.aqi,
+                    price_cents_per_kwh: zone.price_cents_per_kwh
+                  }])
+                )
+              }}
+              selectedZip={DEFAULT_ATLANTA_ZIP}
+            />
+          ) : (
+            <div className="h-full bg-muted rounded-lg flex items-center justify-center">
+              <div className="text-center">
+                <Map className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Interactive map showing ZIP-level energy metrics
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
     </div>
