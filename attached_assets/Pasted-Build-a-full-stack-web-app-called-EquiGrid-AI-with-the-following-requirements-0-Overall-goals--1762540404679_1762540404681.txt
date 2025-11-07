@@ -1,0 +1,312 @@
+Build a full-stack web app called “EquiGrid AI” with the following requirements.
+
+0) Overall goals
+
+Extremely appealing, modern consumer-grade UI (clean, calm, premium).
+
+Public marketing site + Private SaaS dashboard.
+
+Works with free APIs by default, with a Mock Data mode.
+
+Supports two personas:
+
+Data Center Operator (owns/runs facilities)
+
+Cloud / Data-Using Company (runs workloads on cloud)
+
+Integrates OpenAI for natural-language recommendations (with graceful fallback to rule-based if no API key).
+
+Built-in Dark/Light mode toggle in Settings; remember preference in localStorage.
+
+Color theme: use evidence-based consumer palette (default calm dark: near-black backgrounds, off-white text, muted accent; light mode equivalent). Use contrast-safe colors and accessible font sizes.
+
+Mobile-first responsive.
+
+1) Tech stack & project structure
+
+Frontend: React + Vite, TypeScript, Tailwind CSS, Headless UI (or Radix), Recharts (charts), MapLibre GL (maps, no token), React Router.
+
+Backend: FastAPI (Python) with uvicorn.
+
+Data layer: DuckDB (file-backed) for quick joins/aggregations; fallback to JSON if unavailable.
+
+Jobs/cache: In-process hourly scheduler (APScheduler) to refresh free APIs (when LIVE mode is on).
+
+Docs: A concise README with run commands and environment setup.
+
+File tree (create this):
+
+/server
+  main.py
+  /routes
+    zones.py        # /api/zone?zip=
+    metrics.py      # /api/metrics (KPIs & charts)
+    recs.py         # /api/recommendations (OpenAI or rule-based)
+    reports.py      # /api/reports (template upload + fill + export)
+    integrations.py # /api/integrations (status, set LIVE/MOCK)
+  /logic
+    cost.py carbon.py cii.py scenarios.py cleaner_hours.py schema.py
+  /data
+    geo/metro_zip.geojson
+    finoptima_workloads.csv
+    finoptima_grid_mix.csv
+    finoptima_equity.csv
+    dc_facility_telemetry.csv
+    ba_grid_mix.csv
+    atl_equity.csv
+  /cache
+    .gitkeep
+  /templates
+    builtin_esg.docx
+/web
+  index.html
+  /src
+    main.tsx App.tsx
+    /pages
+      Home.tsx About.tsx HowItWorks.tsx Pricing.tsx EnergyZone.tsx Demo.tsx Login.tsx
+      Dashboard.tsx Recs.tsx Reports.tsx Summary.tsx Integrations.tsx Settings.tsx
+    /components
+      NavBar.tsx Footer.tsx ModeToggle.tsx PersonaSwitch.tsx
+      KpiCards.tsx ChartsPanel.tsx MiniMap.tsx RecPanel.tsx
+      ZipSearchBar.tsx ZoneKpis.tsx ZoneMap.tsx ZoneTrends.tsx CleanerHours.tsx
+      ReportUpload.tsx ReportPreview.tsx FileDrop.tsx StatusBadge.tsx
+    /lib
+      api.ts calcCost.ts calcCI.ts calcCII.ts formatters.ts constants.ts
+    /styles
+      globals.css theme.css
+/config
+  app.config.json  # feature flags: { "LIVE_MODE": false, "DEFAULT_METRO": "atlanta" }
+
+2) Routing & pages
+
+Public routes
+
+/ Landing: hero (“Powering Profits with Purpose”), value cards (Cost Savings, Compliance, Community Impact), “Who We Serve” split (Operators vs Cloud Users), CTA buttons (Try Energy Zone, Request Demo).
+
+/about About: mission, origin story, lean team section.
+
+/how-it-works How It Works: 3-step flow (Connect → Analyze → Optimize/Report), simple diagrams.
+
+/pricing Pricing: Free (demo), Pro, Enterprise (static copy).
+
+/energy-zone Your Energy Zone: ZIP input + choropleth heatmap by ZIP, KPI cards (Load, Carbon Intensity, AQI, Price), 24h trends, “Cleaner hours” pills.
+
+/demo Demo Request: short form (name, email, org, persona) → POST to backend and write to a CSV/JSON file; show success toast.
+
+/login Login: basic email/password mock auth; also buttons to quick-login as Operator or Cloud User demo personas.
+
+Private routes (guarded by simple session state)
+
+/app/integrations Connect Cloud Accounts:
+
+Toggle “Use Mock Data” vs “Live Data”.
+
+Show status for free APIs (EIA, AirNow, Census, CAMD, Open-Meteo).
+
+Fields for API keys: EIA_API_KEY, AIRNOW_API_KEY, OPENAI_API_KEY.
+
+“Test & Save” button; persist to server-side .env or Replit Secrets interface (abstract via endpoint).
+
+/app/dashboard Dashboard (persona-aware):
+
+KPI cards: Cost ($), kWh, kgCO₂, Community Impact Index (CII) with before/after badges when optimization toggles are used.
+
+Charts: cost over time (baseline vs optimized), carbon intensity vs kWh.
+
+Mini map thumbnail linking to full map.
+
+/app/recommendations AI Recommendations:
+
+Operator controls: Cooling setpoint +°F, Containment %, Batch deferral % (3–7pm → 9pm–1am).
+
+Cloud user controls: Shift % slider (0–60%), Target region select (us-east → us-west), Target hours (off-peak).
+
+Button “Generate Recommendations”: calls OpenAI (if key present) with structured prompt + server-computed ROI; fallback to rule-based text if no key.
+
+Show ROI widget: $ saved, tCO₂ avoided, CII improvement.
+
+/app/reports Compliance Reports:
+
+Built-in ESG template (DOCX).
+
+Upload template (DOCX) → parse placeholders → simple field mapping UI (dropdowns map placeholders to metrics) → Generate DOCX (and PDF if possible).
+
+Version history list with timestamps.
+
+/app/summary ROI & Impact Summary: before/after table, top impacted ZIPs with CII deltas, “Export PDF”.
+
+/app/settings Settings: dark/light toggle, color theme preview, account info, persona switch.
+
+3) Personas & auth (mock)
+
+Store a simple session with fields: { userId, role: "operator" | "cloud", companyName }.
+
+Add “Quick Login” buttons on /login to pick persona instantly for demo.
+
+Navbar shows user + persona; allow switching persona in Settings.
+
+4) Data & algorithms
+
+Free APIs to support (LIVE mode):
+
+EIA Open Data (grid fuel mix & demand): use EIA_API_KEY. Cache hourly.
+
+EPA AirNow (AQI PM2.5/O₃): AIRNOW_API_KEY. Cache hourly.
+
+EPA CAMD (plant-level emissions): no key; cache daily.
+
+US Census ACS (demographics): no key; pre-slice to demo metro.
+
+Open-Meteo (temperature/humidity): no key; cache hourly.
+
+Geo: Use a pre-baked GeoJSON for ~20–50 ZIPs in one metro (Atlanta or Northern Virginia) with the fields you need. Don’t fetch nationwide shapefiles at runtime.
+
+Mock data (CSV) bundled for two demos:
+
+FinOptima (cloud user): finoptima_workloads.csv, finoptima_grid_mix.csv, finoptima_equity.csv
+
+Data-center operator (ATL): dc_facility_telemetry.csv, ba_grid_mix.csv, atl_equity.csv
+
+Calculations (implement in /server/logic):
+
+Cost: Σ(kWh_t × rate_t)
+
+Carbon intensity proxy (kgCO₂/kWh):
+
+CI_t = Σ(share_i,t × EF_i)
+EF defaults: coal .95, gas .40, oil .78, nuclear .012, wind .012, solar .045, hydro .004
+
+
+Emissions: Σ(kWh_t × CI_t)
+
+Community Impact Index (CII, 0–100):
+
+CII = 0.35*CI_norm + 0.25*AQI_norm + 0.25*SVI_norm + 0.15*EnergyBurden_norm
+
+
+Normalize each metric across displayed ZIPs for the session.
+
+Cleaner hours: identify hours where both CI and price proxies are below their 30th percentile.
+
+Optimization levers (simulate and recompute KPIs):
+
+Cloud user: shift X% of training from (us-east, peak) → (us-west, off-peak).
+
+Operator: +Δ°F cooling setpoint (reduce cooling_kw ~6–8% at peak), +% containment (improves PUE), defer 20% batch (3–7pm → 9pm–1am).
+
+Return baseline vs optimized KPIs & charts.
+
+5) API design (backend)
+
+GET /api/integrations/status → which APIs are configured, LIVE vs MOCK, last sync times.
+
+POST /api/integrations/config → set LIVE/MOCK, save keys (server keeps secrets).
+
+GET /api/zone?zip=30331 → returns current zone KPIs, 24h trends, equity snapshot, cleaner hours.
+
+GET /api/metrics?persona=operator|cloud → returns dashboard KPIs + timeseries (+ mini-map data summary).
+
+POST /api/recommendations (body: persona, current settings, shift plan) → returns:
+
+roi: { costSavedUSD, savingsPct, emissionsAvoidedTons, ciiDelta }
+
+nlp: paragraph(s) with business-grade recommendations. Prefer OpenAI if OPENAI_API_KEY present; else use rule-based template.
+
+POST /api/reports/templates/upload (DOCX) → parse placeholders and return field list.
+
+POST /api/reports/generate (templateId, fieldMap, dataSelection) → returns DOCX; attempt PDF if possible.
+
+6) OpenAI integration (with fallback)
+
+Use OPENAI_API_KEY env var.
+
+Prompt should include the numeric ROI + scenario context and ask the model to produce a concise, executive-tone recommendation with bullets, avoiding hallucinations.
+
+If key missing, fallback to deterministic rule-based copy assembled server-side.
+
+Example prompt structure (server):
+
+System: You are an energy & ESG advisor. Be precise, concise, and businesslike.
+User: Company: {{companyName}} | Persona: {{persona}}
+Inputs: cost_savings=${{..}}, emissions_avoided={{..}} tCO2, cii_delta={{..}} pts,
+shift_plan={{..}}, constraints={{..}}.
+Task: Draft a short recommendation (3–5 bullets) + one business summary line.
+Avoid speculative claims; only use provided numbers.
+
+7) Frontend components & UX notes
+
+NavBar: sticky, shows Login/Logout, quick link to Energy Zone.
+
+ModeToggle: icon button toggles dark/light; store in localStorage; default to system theme.
+
+PersonaSwitch: pill toggle (Operator | Cloud) visible on private pages.
+
+KpiCards: large numbers, delta badges (↑/↓), accessible colors.
+
+ZoneMap: MapLibre GL choropleth by ZIP; layer toggles: Load / Carbon / CII; hover tooltips show ZIP, energy burden, SVI, CI.
+
+RecPanel: sliders/selects on left, recommendation text on right; “Apply” recomputes KPIs client-side by calling backend.
+
+ReportUpload: drag-and-drop DOCX; detect placeholders; show mapping list; preview a couple of fields; “Generate Report” button.
+
+8) Dark/Light theme & color guidance
+
+Dark (default): background #0B0D0E, text #EAECEF, muted surfaces #121416, accents: emerald/teal for positive, amber for warnings, soft red for negatives.
+
+Light: background #F8FAFC, text #0F172A, surfaces #FFFFFF with subtle shadow, same semantic accents.
+
+Use Tailwind CSS variables for colors; ensure WCAG AA contrast on text and key UI. Provide a Theme Preview section in Settings.
+
+9) Accessibility & polish
+
+Semantic HTML, labels, focus states, keyboard navigation.
+
+Respect reduced-motion.
+
+Skeleton loaders for charts/maps.
+
+Toasts on save/export.
+
+Empty states with helpful copy.
+
+10) Acceptance criteria (must pass)
+
+Public pages render beautifully, mobile-first.
+
+/energy-zone accepts ZIP, shows KPIs, map, 24h trends, cleaner hours (works with mock when LIVE off).
+
+Login lets me pick Operator or Cloud persona quickly.
+
+/app/integrations toggles LIVE vs MOCK and shows API status.
+
+/app/dashboard shows KPIs and charts; numbers update when recommendations are applied.
+
+/app/recommendations returns OpenAI text when key present; otherwise rule-based text.
+
+/app/reports lets me upload a DOCX, map fields, and export a filled report.
+
+Dark/Light toggle works and persists.
+
+No secrets in client bundle; keys managed server-side.
+
+11) Seed data (generate if not provided)
+
+Create realistic CSVs in /server/data per filenames above for:
+
+FinOptima (cloud user, us-east/us-west, peak/off-peak rates)
+
+Operator (Atlanta) telemetry & equity ZIPs
+
+Provide a small metro_zip.geojson with ~25 ZIP polygons and demo properties.
+
+12) Run instructions (put in README)
+
+Backend: uvicorn server.main:app --reload --port 8000
+
+Frontend: npm i && npm run dev (Vite on port 5173)
+
+Env vars (Replit Secrets): EIA_API_KEY, AIRNOW_API_KEY, OPENAI_API_KEY (optional)
+
+Switch LIVE/MOCK on /app/integrations.
+
+Build all of the above as a cohesive, production-feeling demo app.
