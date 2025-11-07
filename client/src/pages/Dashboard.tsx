@@ -14,7 +14,7 @@ export default function Dashboard() {
   const { session } = useAuth();
 
   const { data: metrics, isLoading } = useQuery<MetricsData>({
-    queryKey: ["/api/metrics", session?.role],
+    queryKey: [`/api/metrics?persona=${session?.role}`],
     enabled: !!session,
   });
 

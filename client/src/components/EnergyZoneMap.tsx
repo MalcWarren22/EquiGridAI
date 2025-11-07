@@ -142,7 +142,7 @@ export function EnergyZoneMap({ data, selectedZip, onZipClick }: EnergyZoneMapPr
         source: "zip-polygons",
         paint: {
           "fill-color": "#666",
-          "fill-opacity": 0.5
+          "fill-opacity": 0.85
         }
       });
 
