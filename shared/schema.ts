@@ -1,4 +1,4 @@
-import { pgTable, text, integer, serial, timestamp, boolean, real, varchar, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, timestamp, boolean, real, varchar, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -72,12 +72,41 @@ export const insertIntegrationConfigSchema = createInsertSchema(integrationConfi
 export type IntegrationConfig = typeof integrationConfigs.$inferSelect;
 export type InsertIntegrationConfig = z.infer<typeof insertIntegrationConfigSchema>;
 
+// ========== REPORT TEMPLATES TABLE ==========
+export const reportTemplates = pgTable("report_templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  fileData: text("file_data").notNull(),
+  fileSize: integer("file_size").notNull(),
+  contentHash: text("content_hash").notNull(),
+  description: text("description"),
+  placeholders: jsonb("placeholders").notNull().$type<string[]>(),
+  lastUsedAt: timestamp("last_used_at"),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+}, (table) => ({
+  userNameIdx: index("report_templates_user_name_idx").on(table.userId, table.name),
+}));
+
+export const insertReportTemplateSchema = createInsertSchema(reportTemplates, {
+  fileData: z.string(),
+  placeholders: z.array(z.string()),
+}).omit({
+  id: true,
+  uploadedAt: true,
+  lastUsedAt: true,
+});
+
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type InsertReportTemplate = z.infer<typeof insertReportTemplateSchema>;
+
 // ========== REPORT VERSIONS TABLE ==========
 export const reportVersions = pgTable("report_versions", {
   id: varchar("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  templateName: text("template_name"),
+  templateId: integer("template_id").references(() => reportTemplates.id, { onDelete: "set null" }),
   filePath: text("file_path").notNull(),
   fileType: text("file_type").notNull().$type<"docx" | "pdf">(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
