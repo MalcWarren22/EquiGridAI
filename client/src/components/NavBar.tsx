@@ -50,20 +50,15 @@ export function NavBar() {
         <div className="hidden md:flex items-center gap-4">
           <ModeToggle />
           {isAuthenticated ? (
-            <>
-              <Button variant="ghost" onClick={() => setLocation("/app/dashboard")} data-testid="button-dashboard">
-                Dashboard
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="text-sm">
-                  <div className="font-medium">{session?.companyName}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{session?.role}</div>
-                </div>
-                <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
-                  Logout
-                </Button>
+            <div className="flex items-center gap-3">
+              <div className="text-sm">
+                <div className="font-medium">{session?.companyName}</div>
+                <div className="text-xs text-muted-foreground capitalize">{session?.role}</div>
               </div>
-            </>
+              <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
+                Logout
+              </Button>
+            </div>
           ) : (
             <>
               <Button variant="ghost" onClick={() => setLocation("/demo")} data-testid="button-demo">
@@ -106,28 +101,15 @@ export function NavBar() {
               </Link>
             ))}
             {isAuthenticated ? (
-              <>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setLocation("/app/dashboard");
-                    setMobileMenuOpen(false);
-                  }}
-                  data-testid="button-mobile-dashboard"
-                >
-                  Dashboard
-                </Button>
-                <div className="py-2 border-t">
-                  <div className="text-sm mb-2">
-                    <div className="font-medium">{session?.companyName}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{session?.role}</div>
-                  </div>
-                  <Button variant="outline" className="w-full" onClick={handleLogout} data-testid="button-mobile-logout">
-                    Logout
-                  </Button>
+              <div className="py-2 border-t">
+                <div className="text-sm mb-2">
+                  <div className="font-medium">{session?.companyName}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{session?.role}</div>
                 </div>
-              </>
+                <Button variant="outline" className="w-full" onClick={handleLogout} data-testid="button-mobile-logout">
+                  Logout
+                </Button>
+              </div>
             ) : (
               <>
                 <Button
