@@ -12,6 +12,8 @@ import type {
   InsertDemoRequest,
   IntegrationConfig,
   InsertIntegrationConfig,
+  ReportTemplate,
+  InsertReportTemplate,
   ReportVersion,
   InsertReportVersion,
   OptimizationScenario,
@@ -191,4 +193,43 @@ export async function getScenarioById(id: number): Promise<OptimizationScenario 
 
 export async function deleteScenario(id: number): Promise<void> {
   await db.delete(schema.optimizationScenarios).where(eq(schema.optimizationScenarios.id, id));
+}
+
+// ========== REPORT TEMPLATES ==========
+export async function createReportTemplate(
+  template: InsertReportTemplate
+): Promise<ReportTemplate> {
+  const [newTemplate] = await db
+    .insert(schema.reportTemplates)
+    .values([template])
+    .returning();
+  return newTemplate;
+}
+
+export async function getReportTemplatesByUserId(userId: number): Promise<ReportTemplate[]> {
+  return await db
+    .select()
+    .from(schema.reportTemplates)
+    .where(eq(schema.reportTemplates.userId, userId))
+    .orderBy(desc(schema.reportTemplates.uploadedAt));
+}
+
+export async function getReportTemplateById(id: number): Promise<ReportTemplate | undefined> {
+  const [template] = await db
+    .select()
+    .from(schema.reportTemplates)
+    .where(eq(schema.reportTemplates.id, id))
+    .limit(1);
+  return template;
+}
+
+export async function updateTemplateLastUsed(id: number): Promise<void> {
+  await db
+    .update(schema.reportTemplates)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(schema.reportTemplates.id, id));
+}
+
+export async function deleteReportTemplate(id: number): Promise<void> {
+  await db.delete(schema.reportTemplates).where(eq(schema.reportTemplates.id, id));
 }
