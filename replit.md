@@ -108,6 +108,8 @@ Preferred communication style: Simple, everyday language.
 - **date-fns**: Date manipulation and formatting
 - **class-variance-authority (cva)**: Type-safe component variants
 - **clsx & tailwind-merge**: Conditional className composition
+- **docxtemplater**: Production-ready DOCX template filling library for report generation
+- **pizzip**: ZIP file manipulation for DOCX processing (DOCX files are ZIP archives)
 
 **Build & Development:**
 - **Vite**: Fast HMR and optimized production builds
@@ -115,8 +117,59 @@ Preferred communication style: Simple, everyday language.
 - **TSX**: TypeScript execution for development server
 - **PostCSS**: CSS processing with Tailwind and Autoprefixer
 
-**Database (Configured but Not Active):**
-- **PostgreSQL**: Target database (via @neondatabase/serverless)
-- **Drizzle ORM**: Schema defined in `shared/schema.ts`, migrations configured
-- **Connection**: DATABASE_URL environment variable required to activate
-- Current implementation uses in-memory storage as placeholder
+**Database:**
+- **PostgreSQL**: Active database via @neondatabase/serverless
+- **Drizzle ORM**: Schema defined in `shared/schema.ts`, migrations via `npm run db:push`
+- **Tables**: users, reportTemplates, reportVersions
+- **Connection**: DATABASE_URL environment variable configured
+
+### Key Features Implemented
+
+#### 1. DOCX Report Generation System
+**Feature:** Custom report template upload, management, and personalized DOCX generation
+
+**Architecture:**
+- **Template Storage**: Base64-encoded DOCX files stored in PostgreSQL
+  - Decision: Using `text` column instead of `bytea` for reliability with Neon serverless
+  - Trade-off: 33% storage overhead vs stability with current Drizzle/@neondatabase/serverless
+  - Migration path documented for future switch to bytea when stable
+- **Placeholder System**: Automatically extracts `{{placeholder}}` tags from templates
+  - Scans all DOCX parts: document.xml, headers, footers, footnotes, endnotes
+  - Handles Word's text fragmentation (placeholders split across multiple runs)
+- **Template Filling**: Production-ready docxtemplater library
+  - Preserves document structure, formatting, paragraphs, tables
+  - Supports variable-length replacements (no truncation)
+  - Security: Macro detection, zip bomb protection, file size limits
+
+**API Endpoints:**
+- `POST /api/reports/templates` - Upload DOCX template with multipart/form-data
+- `GET /api/reports/templates` - List user's templates with metadata
+- `DELETE /api/reports/templates/:id` - Delete template (with ownership check)
+- `POST /api/reports/generate` - Generate filled DOCX file for download
+
+**Security Validations:**
+- File size limit: 5MB per upload
+- File type: .docx only (rejects macro-enabled .docm files)
+- Zip bomb protection: Max 1000 entries, 50MB per entry, compression ratio < 100:1
+- Content hash: SHA-256 for duplicate detection
+- User scoping: All operations enforce userId ownership
+
+**Frontend Features:**
+- Drag-and-drop template upload with file validation
+- Template list showing metadata (name, size, placeholders, dates)
+- One-click report generation with automatic download
+- Delete with confirmation dialog
+- Loading states and error handling with toast notifications
+
+**Current Placeholder Values:**
+- `company_name`: From user record
+- `report_date`: Current date formatted
+- `total_cost`, `carbon_savings`, `cii_improvement`, `energy_usage`: Mock values
+- **Future**: Wire to real metrics API data
+
+**Files:**
+- `server/lib/docx-utils.ts`: Parsing, validation, placeholder extraction, template filling
+- `server/storage.ts`: Template CRUD operations
+- `server/routes.ts`: Template and report generation endpoints
+- `shared/schema.ts`: reportTemplates table schema
+- `client/src/pages/Reports.tsx`: Complete UI for template management
