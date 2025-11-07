@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,6 +8,8 @@ import { AuthProvider } from "@/lib/auth-context";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 
 import Home from "@/pages/Home";
 import About from "@/pages/About";
@@ -24,22 +26,33 @@ import Integrations from "@/pages/Integrations";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen">
-      <NavBar />
-      <main className="flex-1">
-        <Switch>
-          {/* Public Routes */}
-          <Route path="/" component={Home} />
-          <Route path="/about" component={About} />
-          <Route path="/how-it-works" component={HowItWorks} />
-          <Route path="/pricing" component={Pricing} />
-          <Route path="/energy-zone" component={EnergyZone} />
-          <Route path="/demo" component={Demo} />
-          <Route path="/login" component={Login} />
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col flex-1">
+          <header className="flex h-16 items-center gap-2 border-b px-4 sticky top-0 bg-background z-10">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex-1" />
+          </header>
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}
 
-          {/* Protected Routes */}
+function Router() {
+  const [location] = useLocation();
+  const isAuthRoute = location.startsWith("/app/");
+
+  if (isAuthRoute) {
+    return (
+      <AuthenticatedLayout>
+        <Switch>
           <Route path="/app/dashboard">
             <ProtectedRoute>
               <Dashboard />
@@ -70,6 +83,25 @@ function Router() {
               <Settings />
             </ProtectedRoute>
           </Route>
+          <Route component={NotFound} />
+        </Switch>
+      </AuthenticatedLayout>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <NavBar />
+      <main className="flex-1">
+        <Switch>
+          {/* Public Routes */}
+          <Route path="/" component={Home} />
+          <Route path="/about" component={About} />
+          <Route path="/how-it-works" component={HowItWorks} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/energy-zone" component={EnergyZone} />
+          <Route path="/demo" component={Demo} />
+          <Route path="/login" component={Login} />
 
           {/* Fallback to 404 */}
           <Route component={NotFound} />
