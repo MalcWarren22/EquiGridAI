@@ -98,7 +98,7 @@ Preferred communication style: Simple, everyday language.
 - **Open-Meteo**: Weather data
 
 **AI Integration:**
-- **OpenAI GPT-5**: AI-powered energy recommendations via Replit AI Integrations
+- **OpenAI GPT-5**: AI-powered energy recommendations via EquiGrid AI Integration AI Integrations
 - Graceful fallback to rule-based recommendations when AI unavailable
 - Configurable via environment variables (AI_INTEGRATIONS_OPENAI_BASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY)
 
